@@ -12,6 +12,6 @@ A Flask web app that predicts BTC/USDT price movements using a Random Forest mod
 - Prepared Flask app with `requirements.txt` and `Procfile` for Render deployment, ensuring compatibility.
 
 ## Setup
-1. Clone the repo: `git clone <your-repo-url>`
+1. Clone the repo: `git clone https://github.com/LeMagnifiq/crypto-ai-agent.git`
 2. Install dependencies: `pip install -r requirements.txt`
 3. Run locally: `python3 app.py`
