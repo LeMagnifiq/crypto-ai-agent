@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto AI Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f0f0;
+            margin: 50px;
+        }
+        h1 {
+            color: #333;
+        }
+        .prediction {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+        .price {
+            color: #2ecc71;
+            font-size: 24px;
+        }
+        .action {
+            color: #e74c3c;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Crypto AI Agent</h1>
+    <div class="prediction">
+        <p class="price">Latest Price: ${{ price|round(2) }}</p>
+        <p class="action">Recommended Action: {{ action }}</p>
+    </div>
+</body>
+</html>
