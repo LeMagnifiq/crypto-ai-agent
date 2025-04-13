@@ -42,16 +42,18 @@ class CryptoAgent:
             data = response.json()
             prices = [point[1] for point in data["prices"]]
             volumes = [point[1] for point in data["total_volumes"]]
-            return prices, volumes
+            timestamps = [point[0] for point in data["prices"]]  # Unix timestamps
+            return prices, volumes, timestamps
         except Exception as e:
             print(f"Error fetching price history: {e}")
-            return [100000.0] * 50, [1000.0] * 50  # Fallback
+            return [100000.0] * 50, [1000.0] * 50, [0] * 50
 
     def predict(self):
-        prices, volumes = self.fetch_price_history()
+        prices, volumes, timestamps = self.fetch_price_history()
         if len(prices) < 50:
             prices = [100000.0] * (50 - len(prices)) + prices
             volumes = [1000.0] * (50 - len(volumes)) + volumes
+            timestamps = [0] * (50 - len(timestamps)) + timestamps
         
         price = prices[-1]
         volume = volumes[-1]
@@ -71,4 +73,4 @@ class CryptoAgent:
         
         prediction = self.model.predict(features)[0]
         action = "Buy" if prediction == 1 else "Sell"
-        return price, action
+        return price, action, prices, timestamps

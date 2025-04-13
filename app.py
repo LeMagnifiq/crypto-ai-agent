@@ -6,8 +6,8 @@ agent = CryptoAgent('crypto_model.pkl')
 
 @app.route('/')
 def index():
-    price, action = agent.predict()
-    return render_template('index.html', price=price, action=action)
+    price, action, prices, timestamps = agent.predict()
+    return render_template('index.html', price=price, action=action, prices=prices, timestamps=timestamps)
 
 if __name__ == '__main__':
     app.run(debug=True)
