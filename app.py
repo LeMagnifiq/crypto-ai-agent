@@ -8,15 +8,20 @@ agent = CryptoAgent('crypto_model.pkl')
 def index():
     coin = request.form.get('coin', 'bitcoin')
     alert_price = request.form.get('alert_price', '')
-    price, action, prices, timestamps, trend = agent.predict(coin)
+    try:
+        price, action, prices, timestamps, trend = agent.predict(coin)
+    except Exception as e:
+        print(f"Error in predict for {coin}: {e}")
+        price, action, prices, timestamps, trend = 0, "Error", [], [], "Unknown"
+    
     coin_name = 'Bitcoin' if coin == 'bitcoin' else 'Ethereum'
     
     # Alert logic
     alert_message = None
-    if alert_price:
+    if alert_price.strip():
         try:
             alert_price = float(alert_price)
-            if price < alert_price:
+            if price > 0 and price < alert_price:  # Check valid price
                 alert_message = f"{coin_name} price (${price:.2f}) is below your alert threshold (${alert_price:.2f})!"
         except ValueError:
             alert_message = "Please enter a valid number for the alert price."

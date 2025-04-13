@@ -41,6 +41,7 @@
         .trend.uptrend { color: green; }
         .trend.downtrend { color: red; }
         .trend.neutral { color: gray; }
+        .trend.unknown { color: orange; }
         .alert-form {
             margin: 20px 0;
         }
@@ -64,6 +65,10 @@
             font-size: 16px;
             margin: 5px;
         }
+        .error {
+            color: red;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -79,9 +84,13 @@
                 <button type="submit">Set Alert</button>
             </div>
         </form>
+        {% if price > 0 %}
         <p class="price">Latest {{ coin_name }} Price: ${{ "%.2f"|format(price|float) }}</p>
         <p class="action">Recommended Action: {{ action }}</p>
         <p class="trend {{ trend.lower() }}">Trend: {{ trend }}</p>
+        {% else %}
+        <p class="error">Error fetching data for {{ coin_name }}. Please try again.</p>
+        {% endif %}
         {% if alert_message %}
         <p class="alert-message">{{ alert_message }}</p>
         {% endif %}

@@ -27,38 +27,43 @@ class CryptoAgent:
         except AttributeError:
             print("Model does not store feature names.")
 
-    def fetch_price_history(self, coin='bitcoin', days=50):
+    def fetch_price_history(self, coin='bitcoin', days=30):  # Reduced from 50
         try:
             url = f"https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
             params = {
                 "vs_currency": "usd",
-                "days": days
+                "days": days,
+                "interval": "daily"  # Reduce data points
             }
             session = requests.Session()
-            retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+            retries = Retry(total=2, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
             session.mount('https://', HTTPAdapter(max_retries=retries))
-            response = session.get(url, params=params, timeout=20)
+            response = session.get(url, params=params, timeout=10)  # Reduced timeout
             response.raise_for_status()
             data = response.json()
             prices = [point[1] for point in data["prices"]]
             volumes = [point[1] for point in data["total_volumes"]]
             timestamps = [point[0] for point in data["prices"]]
+            # Limit to 30 points
+            prices = prices[-30:]
+            volumes = volumes[-30:]
+            timestamps = timestamps[-30:]
             return prices, volumes, timestamps
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             print(f"Error fetching price history for {coin}: {e}")
-            return [100000.0] * 50, [1000.0] * 50, [0] * 50
+            return [100000.0] * 30, [1000.0] * 30, [0] * 30
 
     def predict(self, coin='bitcoin'):
         prices, volumes, timestamps = self.fetch_price_history(coin)
-        if len(prices) < 50:
-            prices = [100000.0] * (50 - len(prices)) + prices
-            volumes = [1000.0] * (50 - len(volumes)) + volumes
-            timestamps = [0] * (50 - len(timestamps)) + timestamps
+        if len(prices) < 30:
+            prices = [100000.0] * (30 - len(prices)) + prices
+            volumes = [1000.0] * (30 - len(volumes)) + volumes
+            timestamps = [0] * (30 - len(timestamps)) + timestamps
         
         price = prices[-1]
         volume = volumes[-1]
         sma_10 = calculate_sma(prices, 10)
-        sma_50 = calculate_sma(prices, 50)
+        sma_50 = calculate_sma(prices, min(30, len(prices)))  # Adjust for shorter data
         rsi = calculate_rsi(prices, 14)
         
         # Trend indicator
@@ -78,6 +83,11 @@ class CryptoAgent:
         
         print(f"Features passed to model for {coin}:", features.columns.tolist())
         
-        prediction = self.model.predict(features)[0]
-        action = "Buy" if prediction == 1 else "Sell"
+        try:
+            prediction = self.model.predict(features)[0]
+            action = "Buy" if prediction == 1 else "Sell"
+        except Exception as e:
+            print(f"Prediction error for {coin}: {e}")
+            action = "Hold"  # Fallback
+        
         return price, action, prices, timestamps, trend
