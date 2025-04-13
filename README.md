@@ -15,3 +15,4 @@ A Flask web app that predicts BTC/USDT price movements using a Random Forest mod
 1. Clone the repo: `git clone https://github.com/LeMagnifiq/crypto-ai-agent.git`
 2. Install dependencies: `pip install -r requirements.txt`
 3. Run locally: `python3 app.py`
+4. - Fixed CoinGecko API with USD and simplified template for live BTC predictions.
