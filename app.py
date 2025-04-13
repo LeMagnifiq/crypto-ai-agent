@@ -6,11 +6,24 @@ agent = CryptoAgent('crypto_model.pkl')
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    coin = request.form.get('coin', 'bitcoin')  # Default to bitcoin
-    price, action, prices, timestamps = agent.predict(coin)
+    coin = request.form.get('coin', 'bitcoin')
+    alert_price = request.form.get('alert_price', '')
+    price, action, prices, timestamps, trend = agent.predict(coin)
     coin_name = 'Bitcoin' if coin == 'bitcoin' else 'Ethereum'
+    
+    # Alert logic
+    alert_message = None
+    if alert_price:
+        try:
+            alert_price = float(alert_price)
+            if price < alert_price:
+                alert_message = f"{coin_name} price (${price:.2f}) is below your alert threshold (${alert_price:.2f})!"
+        except ValueError:
+            alert_message = "Please enter a valid number for the alert price."
+    
     return render_template('index.html', price=price, action=action, prices=prices, 
-                         timestamps=timestamps, coin=coin, coin_name=coin_name)
+                         timestamps=timestamps, coin=coin, coin_name=coin_name, 
+                         trend=trend, alert_price=alert_price, alert_message=alert_message)
 
 if __name__ == '__main__':
     app.run(debug=True)

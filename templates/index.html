@@ -32,7 +32,22 @@
         .action {
             color: red;
             font-size: 20px;
-            margin-bottom: 20px;
+            margin: 10px 0;
+        }
+        .trend {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        .trend.uptrend { color: green; }
+        .trend.downtrend { color: red; }
+        .trend.neutral { color: gray; }
+        .alert-form {
+            margin: 20px 0;
+        }
+        .alert-message {
+            color: orange;
+            font-size: 16px;
+            margin: 10px 0;
         }
         .chart-container {
             position: relative;
@@ -44,10 +59,10 @@
             width: 100% !important;
             height: 100% !important;
         }
-        select {
+        select, input[type="number"], button {
             padding: 8px;
             font-size: 16px;
-            margin-bottom: 20px;
+            margin: 5px;
         }
     </style>
 </head>
@@ -59,9 +74,17 @@
                 <option value="bitcoin" {% if coin == 'bitcoin' %}selected{% endif %}>Bitcoin (BTC)</option>
                 <option value="ethereum" {% if coin == 'ethereum' %}selected{% endif %}>Ethereum (ETH)</option>
             </select>
+            <div class="alert-form">
+                <input type="number" name="alert_price" value="{{ alert_price }}" placeholder="Set alert price (USD)">
+                <button type="submit">Set Alert</button>
+            </div>
         </form>
         <p class="price">Latest {{ coin_name }} Price: ${{ "%.2f"|format(price|float) }}</p>
         <p class="action">Recommended Action: {{ action }}</p>
+        <p class="trend {{ trend.lower() }}">Trend: {{ trend }}</p>
+        {% if alert_message %}
+        <p class="alert-message">{{ alert_message }}</p>
+        {% endif %}
         <div class="chart-container">
             <canvas id="priceChart"></canvas>
         </div>

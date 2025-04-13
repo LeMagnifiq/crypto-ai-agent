@@ -61,6 +61,13 @@ class CryptoAgent:
         sma_50 = calculate_sma(prices, 50)
         rsi = calculate_rsi(prices, 14)
         
+        # Trend indicator
+        trend = 'Neutral'
+        if sma_10 > sma_50:
+            trend = 'Uptrend'
+        elif sma_10 < sma_50:
+            trend = 'Downtrend'
+        
         features = pd.DataFrame({
             'sma_10': [sma_10],
             'sma_50': [sma_50],
@@ -73,4 +80,4 @@ class CryptoAgent:
         
         prediction = self.model.predict(features)[0]
         action = "Buy" if prediction == 1 else "Sell"
-        return price, action, prices, timestamps
+        return price, action, prices, timestamps, trend
