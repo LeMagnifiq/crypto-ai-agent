@@ -22,7 +22,6 @@ def calculate_sma(prices, period):
 class CryptoAgent:
     def __init__(self, model_path):
         self.model = joblib.load(model_path)
-        # Debug: Print expected feature names
         try:
             print("Expected model features:", self.model.feature_names_in_)
         except AttributeError:
@@ -32,10 +31,9 @@ class CryptoAgent:
         try:
             url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
             params = {
-                "vs_currency": "usd",  # Use usd instead of usdt
+                "vs_currency": "usd",
                 "days": days
             }
-            # Set up session with retries
             session = requests.Session()
             retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
             session.mount('https://', HTTPAdapter(max_retries=retries))
@@ -55,14 +53,12 @@ class CryptoAgent:
             prices = [100000.0] * (50 - len(prices)) + prices
             volumes = [1000.0] * (50 - len(volumes)) + volumes
         
-        # Calculate features
-        price = prices[-1]  # Latest price as close
-        volume = volumes[-1]  # Latest volume
+        price = prices[-1]
+        volume = volumes[-1]
         sma_10 = calculate_sma(prices, 10)
         sma_50 = calculate_sma(prices, 50)
         rsi = calculate_rsi(prices, 14)
         
-        # Create feature DataFrame in model's expected order
         features = pd.DataFrame({
             'sma_10': [sma_10],
             'sma_50': [sma_50],
@@ -71,7 +67,6 @@ class CryptoAgent:
             'volume': [volume]
         })
         
-        # Debug: Print features being passed
         print("Features passed to model:", features.columns.tolist())
         
         prediction = self.model.predict(features)[0]
