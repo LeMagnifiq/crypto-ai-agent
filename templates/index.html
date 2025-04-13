@@ -1,38 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto AI Agent</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
             background-color: #f0f0f0;
-            margin: 50px;
         }
-        h1 {
-            color: #333;
-        }
-        .prediction {
-            background-color: #fff;
+        .container {
+            text-align: center;
+            background-color: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            display: inline-block;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         .price {
-            color: #2ecc71;
+            color: green;
             font-size: 24px;
+            margin: 10px 0;
         }
         .action {
-            color: #e74c3c;
-            font-size: 24px;
+            color: red;
+            font-size: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Crypto AI Agent</h1>
-    <div class="prediction">
-        <p class="price">Latest Price: ${{ price|round(2) }}</p>
+    <div class="container">
+        <h1>Crypto AI Agent</h1>
+        <p class="price">Latest Price: ${{ "%.2f"|format(price|float) }}</p>
         <p class="action">Recommended Action: {{ action }}</p>
     </div>
 </body>

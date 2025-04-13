@@ -1,79 +1,79 @@
-# crypto_agent.py
 import pandas as pd
+import joblib
+import requests
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-import joblib
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
-# Generate mock crypto data
-def fetch_crypto_data(symbol='BTC/USDT', timeframe='1h', limit=100):
-    try:
-        # Mock OHLCV data (timestamp, open, high, low, close, volume)
-        np.random.seed(42)  # For reproducibility
-        timestamps = pd.date_range(end='2025-04-13', periods=limit, freq='H')
-        prices = np.random.normal(85000, 1000, limit).cumsum() / 100 + 85000  # Simulate price movement
-        data = {
-            'timestamp': timestamps,
-            'open': prices,
-            'high': prices + np.random.uniform(0, 500, limit),
-            'low': prices - np.random.uniform(0, 500, limit),
-            'close': prices + np.random.uniform(-200, 200, limit),
-            'volume': np.random.uniform(10, 100, limit)
-        }
-        df = pd.DataFrame(data)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        return df
-    except Exception as e:
-        print(f"Error generating mock data: {e}")
-        return None
+def calculate_rsi(prices, period=14):
+    deltas = np.diff(prices)
+    gains = deltas.clip(min=0)
+    losses = -deltas.clip(max=0)
+    avg_gain = pd.Series(gains).rolling(window=period, min_periods=1).mean()
+    avg_loss = pd.Series(losses).rolling(window=period, min_periods=1).mean()
+    rs = avg_gain / (avg_loss + 1e-10)
+    rsi = 100 - (100 / (1 + rs))
+    return rsi.iloc[-1]
 
-# Add features (SMA and RSI)
-def add_features(df):
-    df['sma_10'] = df['close'].rolling(window=10).mean()
-    df['sma_50'] = df['close'].rolling(window=50).mean()
-    delta = df['close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    df['rsi'] = 100 - (100 / (1 + rs))
-    return df.dropna()
+def calculate_sma(prices, period):
+    return pd.Series(prices).rolling(window=period, min_periods=1).mean().iloc[-1]
 
-# Prepare data for model
-def prepare_data(df):
-    df['target'] = (df['close'].shift(-1) > df['close']).astype(int)
-    df = df.dropna()
-    X = df[['sma_10', 'sma_50', 'rsi', 'close', 'volume']]
-    y = df['target']
-    return X, y, df
+class CryptoAgent:
+    def __init__(self, model_path):
+        self.model = joblib.load(model_path)
+        # Debug: Print expected feature names
+        try:
+            print("Expected model features:", self.model.feature_names_in_)
+        except AttributeError:
+            print("Model does not store feature names.")
 
-# Train and save model
-def train_model():
-    data = fetch_crypto_data()
-    if data is None:
-        return None, None
-    data = add_features(data)
-    X, y, processed_data = prepare_data(data)
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
-    joblib.dump(model, 'crypto_model.pkl')
-    return model, processed_data
+    def fetch_price_history(self, days=50):
+        try:
+            url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
+            params = {
+                "vs_currency": "usd",  # Use usd instead of usdt
+                "days": days
+            }
+            # Set up session with retries
+            session = requests.Session()
+            retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+            session.mount('https://', HTTPAdapter(max_retries=retries))
+            response = session.get(url, params=params, timeout=20)
+            response.raise_for_status()
+            data = response.json()
+            prices = [point[1] for point in data["prices"]]
+            volumes = [point[1] for point in data["total_volumes"]]
+            return prices, volumes
+        except Exception as e:
+            print(f"Error fetching price history: {e}")
+            return [100000.0] * 50, [1000.0] * 50  # Fallback
 
-# Predict latest price movement
-def predict_latest():
-    model = joblib.load('crypto_model.pkl')
-    latest_data = fetch_crypto_data()
-    if latest_data is None:
-        return None, None, None
-    latest_data = add_features(latest_data)
-    latest_features = latest_data[['sma_10', 'sma_50', 'rsi', 'close', 'volume']].iloc[-1:]
-    prediction = model.predict(latest_features)[0]
-    action = "Buy" if prediction == 1 else "Sell"
-    price = latest_data['close'].iloc[-1]
-    return action, price, latest_data
-
-if __name__ == "__main__":
-    model, processed_data = train_model()
-    if model:
-        action, price, data = predict_latest()
-        if action:
-            print(f"Latest Price: ${price:.2f}")
-            print(f"Recommended Action: {action}")
+    def predict(self):
+        prices, volumes = self.fetch_price_history()
+        if len(prices) < 50:
+            prices = [100000.0] * (50 - len(prices)) + prices
+            volumes = [1000.0] * (50 - len(volumes)) + volumes
+        
+        # Calculate features
+        price = prices[-1]  # Latest price as close
+        volume = volumes[-1]  # Latest volume
+        sma_10 = calculate_sma(prices, 10)
+        sma_50 = calculate_sma(prices, 50)
+        rsi = calculate_rsi(prices, 14)
+        
+        # Create feature DataFrame in model's expected order
+        features = pd.DataFrame({
+            'sma_10': [sma_10],
+            'sma_50': [sma_50],
+            'rsi': [rsi],
+            'close': [price],
+            'volume': [volume]
+        })
+        
+        # Debug: Print features being passed
+        print("Features passed to model:", features.columns.tolist())
+        
+        prediction = self.model.predict(features)[0]
+        action = "Buy" if prediction == 1 else "Sell"
+        return price, action
