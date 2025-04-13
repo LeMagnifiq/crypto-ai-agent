@@ -11,7 +11,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
         }
@@ -21,7 +21,7 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 80%;
+            width: 90%;
             max-width: 800px;
         }
         .price {
@@ -34,9 +34,15 @@
             font-size: 20px;
             margin-bottom: 20px;
         }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px; /* Fixed height */
+            margin: 0 auto;
+        }
         #priceChart {
-            max-width: 100%;
-            height: 300px;
+            width: 100% !important;
+            height: 100% !important;
         }
     </style>
 </head>
@@ -45,12 +51,17 @@
         <h1>Crypto AI Agent</h1>
         <p class="price">Latest Price: ${{ "%.2f"|format(price|float) }}</p>
         <p class="action">Recommended Action: {{ action }}</p>
-        <canvas id="priceChart"></canvas>
+        <div class="chart-container">
+            <canvas id="priceChart"></canvas>
+        </div>
     </div>
     <script>
         const prices = {{ prices|tojson }};
         const timestamps = {{ timestamps|tojson }};
-        const labels = timestamps.map(ts => new Date(ts).toLocaleDateString());
+        const labels = timestamps.map(ts => {
+            if (ts === 0) return ''; // Handle fallback timestamps
+            return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
         const ctx = document.getElementById('priceChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -60,15 +71,30 @@
                     label: 'Bitcoin Price (USD)',
                     data: prices,
                     borderColor: 'blue',
-                    fill: false
+                    backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: { title: { display: true, text: 'Date' } },
-                    y: { title: { display: true, text: 'Price (USD)' } }
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        ticks: { maxTicksLimit: 10 } // Limit x-axis labels
+                    },
+                    y: {
+                        title: { display: true, text: 'Price (USD)' },
+                        beginAtZero: false
+                    }
+                },
+                plugins: {
+                    legend: { display: true }
+                },
+                animation: {
+                    duration: 1000 // Smooth but not jittery
                 }
             }
         });
