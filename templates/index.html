@@ -42,6 +42,11 @@
         .trend.downtrend { color: red; }
         .trend.neutral { color: gray; }
         .trend.unknown { color: orange; }
+        .prediction {
+            font-size: 18px;
+            margin: 10px 0;
+            color: purple;
+        }
         .alert-form {
             margin: 20px 0;
         }
@@ -56,7 +61,7 @@
             height: 300px;
             margin: 20px auto;
         }
-        #priceChart, #volumeChart {
+        #priceChart, #volumeChart, #rsiChart {
             width: 100% !important;
             height: 100% !important;
         }
@@ -91,6 +96,7 @@
         <p class="price">Latest {{ coin_name }} Price: ${{ "%.2f"|format(price|float) }}</p>
         <p class="action">Recommended Action: {{ action }}</p>
         <p class="trend {{ trend.lower() }}">Trend: {{ trend }}</p>
+        <p class="prediction">Expected 7-Day Change: {{ "%.1f"|format(price_change|float) }}%</p>
         {% else %}
         <p class="error">Error fetching data for {{ coin_name }}. Please try again.</p>
         {% endif %}
@@ -103,10 +109,14 @@
         <div class="chart-container">
             <canvas id="volumeChart"></canvas>
         </div>
+        <div class="chart-container">
+            <canvas id="rsiChart"></canvas>
+        </div>
     </div>
     <script>
         const prices = {{ prices|tojson }};
         const volumes = {{ volumes|tojson }};
+        const rsiHistory = {{ rsi_history|tojson }};
         const timestamps = {{ timestamps|tojson }};
         const labels = timestamps.map(ts => {
             if (ts === 0) return '';
@@ -176,6 +186,48 @@
                     y: {
                         title: { display: true, text: 'Volume (USD)' },
                         beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: { display: true }
+                },
+                animation: {
+                    duration: 1000
+                }
+            }
+        });
+
+        // RSI Chart
+        const rsiCtx = document.getElementById('rsiChart').getContext('2d');
+        new Chart(rsiCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '{{ coin_name }} RSI',
+                    data: rsiHistory,
+                    borderColor: 'purple',
+                    backgroundColor: 'rgba(128, 0, 128, 0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        ticks: { maxTicksLimit: 10 }
+                    },
+                    y: {
+                        title: { display: true, text: 'RSI' },
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            stepSize: 10
+                        }
                     }
                 },
                 plugins: {

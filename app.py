@@ -9,10 +9,10 @@ def index():
     coin = request.form.get('coin', 'bitcoin')
     alert_price = request.form.get('alert_price', '')
     try:
-        price, action, prices, timestamps, trend, volumes = agent.predict(coin)
+        price, action, prices, timestamps, trend, volumes, rsi_history, price_change = agent.predict(coin)
     except Exception as e:
         print(f"Error in predict for {coin}: {e}")
-        price, action, prices, timestamps, trend, volumes = 0, "Error", [], [], "Unknown", []
+        price, action, prices, timestamps, trend, volumes, rsi_history, price_change = 0, "Error", [], [], "Unknown", [], [], 0.0
     
     coin_name = {
         'bitcoin': 'Bitcoin',
@@ -34,7 +34,7 @@ def index():
     return render_template('index.html', price=price, action=action, prices=prices, 
                          timestamps=timestamps, coin=coin, coin_name=coin_name, 
                          trend=trend, alert_price=alert_price, alert_message=alert_message,
-                         volumes=volumes)
+                         volumes=volumes, rsi_history=rsi_history, price_change=price_change)
 
 if __name__ == '__main__':
     app.run(debug=True)

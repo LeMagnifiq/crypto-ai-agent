@@ -6,9 +6,12 @@ from sklearn.ensemble import RandomForestClassifier
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import logging
+from cachetools import TTLCache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+cache = TTLCache(maxsize=10, ttl=300)
 
 def calculate_rsi(prices, period=14):
     deltas = np.diff(prices)
@@ -18,7 +21,7 @@ def calculate_rsi(prices, period=14):
     avg_loss = pd.Series(losses).rolling(window=period, min_periods=1).mean()
     rs = avg_gain / (avg_loss + 1e-10)
     rsi = 100 - (100 / (1 + rs))
-    return rsi.iloc[-1]
+    return rsi
 
 def calculate_sma(prices, period):
     return pd.Series(prices).rolling(window=period, min_periods=1).mean().iloc[-1]
@@ -32,6 +35,11 @@ class CryptoAgent:
             logger.info("Model does not store feature names.")
 
     def fetch_price_history(self, coin='bitcoin', days=30):
+        cache_key = f"{coin}_{days}"
+        if cache_key in cache:
+            logger.info("Cache hit for %s", coin)
+            return cache[cache_key]
+        
         try:
             url = f"https://api.coingecko.com/api/v3/coins/{coin}/market_chart"
             params = {
@@ -43,7 +51,7 @@ class CryptoAgent:
             session = requests.Session()
             retries = Retry(total=2, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
             session.mount('https://', HTTPAdapter(max_retries=retries))
-            response = session.get(url, params=params, timeout=10)
+            response = session.get(url, params=params, timeout=5)
             response.raise_for_status()
             data = response.json()
             prices = [point[1] for point in data["prices"]]
@@ -53,6 +61,7 @@ class CryptoAgent:
             volumes = volumes[-30:]
             timestamps = timestamps[-30:]
             logger.info("Fetched %d prices for %s", len(prices), coin)
+            cache[cache_key] = (prices, volumes, timestamps)
             return prices, volumes, timestamps
         except requests.exceptions.RequestException as e:
             logger.error("Error fetching price history for %s: %s", coin, str(e))
@@ -70,6 +79,7 @@ class CryptoAgent:
         sma_10 = calculate_sma(prices, 10)
         sma_50 = calculate_sma(prices, min(30, len(prices)))
         rsi = calculate_rsi(prices, 14)
+        rsi_history = calculate_rsi(prices, 14).tolist()  # For chart
         
         trend = 'Neutral'
         if sma_10 > sma_50:
@@ -80,7 +90,7 @@ class CryptoAgent:
         features = pd.DataFrame({
             'sma_10': [sma_10],
             'sma_50': [sma_50],
-            'rsi': [rsi],
+            'rsi': [rsi.iloc[-1]],
             'close': [price],
             'volume': [volume]
         })
@@ -90,8 +100,15 @@ class CryptoAgent:
         try:
             prediction = self.model.predict(features)[0]
             action = "Buy" if prediction == 1 else "Sell"
+            # Estimate price change (simplified: based on confidence)
+            prob = self.model.predict_proba(features)[0]
+            confidence = max(prob) - 0.5  # Scale 0.5-1.0 to 0-0.5
+            price_change = confidence * 10  # Max ±5% change
+            if action == "Sell":
+                price_change = -price_change
         except Exception as e:
             logger.error("Prediction error for %s: %s", coin, str(e))
             action = "Hold"
+            price_change = 0.0
         
-        return price, action, prices, timestamps, trend, volumes
+        return price, action, prices, timestamps, trend, volumes, rsi_history, price_change
