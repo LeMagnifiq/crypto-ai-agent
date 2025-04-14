@@ -54,9 +54,9 @@
             position: relative;
             width: 100%;
             height: 300px;
-            margin: 0 auto;
+            margin: 20px auto;
         }
-        #priceChart {
+        #priceChart, #volumeChart {
             width: 100% !important;
             height: 100% !important;
         }
@@ -78,6 +78,9 @@
             <select name="coin" onchange="this.form.submit()">
                 <option value="bitcoin" {% if coin == 'bitcoin' %}selected{% endif %}>Bitcoin (BTC)</option>
                 <option value="ethereum" {% if coin == 'ethereum' %}selected{% endif %}>Ethereum (ETH)</option>
+                <option value="solana" {% if coin == 'solana' %}selected{% endif %}>Solana (SOL)</option>
+                <option value="cardano" {% if coin == 'cardano' %}selected{% endif %}>Cardano (ADA)</option>
+                <option value="dogecoin" {% if coin == 'dogecoin' %}selected{% endif %}>Dogecoin (DOGE)</option>
             </select>
             <div class="alert-form">
                 <input type="number" name="alert_price" value="{{ alert_price }}" placeholder="Set alert price (USD)">
@@ -97,16 +100,22 @@
         <div class="chart-container">
             <canvas id="priceChart"></canvas>
         </div>
+        <div class="chart-container">
+            <canvas id="volumeChart"></canvas>
+        </div>
     </div>
     <script>
         const prices = {{ prices|tojson }};
+        const volumes = {{ volumes|tojson }};
         const timestamps = {{ timestamps|tojson }};
         const labels = timestamps.map(ts => {
             if (ts === 0) return '';
             return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
-        const ctx = document.getElementById('priceChart').getContext('2d');
-        new Chart(ctx, {
+
+        // Price Chart
+        const priceCtx = document.getElementById('priceChart').getContext('2d');
+        new Chart(priceCtx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -131,6 +140,42 @@
                     y: {
                         title: { display: true, text: 'Price (USD)' },
                         beginAtZero: false
+                    }
+                },
+                plugins: {
+                    legend: { display: true }
+                },
+                animation: {
+                    duration: 1000
+                }
+            }
+        });
+
+        // Volume Chart
+        const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+        new Chart(volumeCtx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '{{ coin_name }} Volume (USD)',
+                    data: volumes,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        ticks: { maxTicksLimit: 10 }
+                    },
+                    y: {
+                        title: { display: true, text: 'Volume (USD)' },
+                        beginAtZero: true
                     }
                 },
                 plugins: {

@@ -7,7 +7,6 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -95,4 +94,4 @@ class CryptoAgent:
             logger.error("Prediction error for %s: %s", coin, str(e))
             action = "Hold"
         
-        return price, action, prices, timestamps, trend
+        return price, action, prices, timestamps, trend, volumes
