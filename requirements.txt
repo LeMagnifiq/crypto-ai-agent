@@ -7,3 +7,4 @@ gunicorn==23.0.0
 requests==2.32.3
 urllib3==2.2.3
 cachetools==5.5.0
+ccxt==4.3.0

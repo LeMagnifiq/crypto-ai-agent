@@ -26,6 +26,22 @@ def calculate_rsi(prices, period=14):
 def calculate_sma(prices, period):
     return pd.Series(prices).rolling(window=period, min_periods=1).mean().iloc[-1]
 
+def calculate_macd(prices, fast=12, slow=26, signal=9):
+    prices_series = pd.Series(prices)
+    ema_fast = prices_series.ewm(span=fast, adjust=False).mean()
+    ema_slow = prices_series.ewm(span=slow, adjust=False).mean()
+    macd = ema_fast - ema_slow
+    macd_signal = macd.ewm(span=signal, adjust=False).mean()
+    return macd.iloc[-1], macd_signal.iloc[-1]
+
+def calculate_bollinger_bands(prices, period=20, std_dev=2):
+    prices_series = pd.Series(prices)
+    sma = prices_series.rolling(window=period, min_periods=1).mean()
+    std = prices_series.rolling(window=period, min_periods=1).std()
+    upper_band = sma + (std * std_dev)
+    lower_band = sma - (std * std_dev)
+    return upper_band.iloc[-1], lower_band.iloc[-1]
+
 class CryptoAgent:
     def __init__(self, model_path):
         self.model = joblib.load(model_path)
@@ -37,7 +53,7 @@ class CryptoAgent:
     def fetch_price_history(self, coin='bitcoin', days=30):
         cache_key = f"{coin}_{days}"
         if cache_key in cache:
-            logger.info("Cache hit for %s", coin)
+            logger.info("Cache hit for %s", cache_key)
             return cache[cache_key]
         
         try:
@@ -79,7 +95,9 @@ class CryptoAgent:
         sma_10 = calculate_sma(prices, 10)
         sma_50 = calculate_sma(prices, min(30, len(prices)))
         rsi = calculate_rsi(prices, 14)
-        rsi_history = calculate_rsi(prices, 14).tolist()  # For chart
+        rsi_history = calculate_rsi(prices, 14).tolist()
+        macd, macd_signal = calculate_macd(prices)
+        bb_upper, bb_lower = calculate_bollinger_bands(prices)
         
         trend = 'Neutral'
         if sma_10 > sma_50:
@@ -92,7 +110,11 @@ class CryptoAgent:
             'sma_50': [sma_50],
             'rsi': [rsi.iloc[-1]],
             'close': [price],
-            'volume': [volume]
+            'volume': [volume],
+            'macd': [macd],
+            'macd_signal': [macd_signal],
+            'bb_upper': [bb_upper],
+            'bb_lower': [bb_lower]
         })
         
         logger.info("Features for %s: %s", coin, features.columns.tolist())
@@ -100,10 +122,9 @@ class CryptoAgent:
         try:
             prediction = self.model.predict(features)[0]
             action = "Buy" if prediction == 1 else "Sell"
-            # Estimate price change (simplified: based on confidence)
             prob = self.model.predict_proba(features)[0]
-            confidence = max(prob) - 0.5  # Scale 0.5-1.0 to 0-0.5
-            price_change = confidence * 10  # Max ±5% change
+            confidence = max(prob) - 0.5
+            price_change = confidence * 10
             if action == "Sell":
                 price_change = -price_change
         except Exception as e:
